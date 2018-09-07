@@ -12,31 +12,26 @@ import (
 	"github.com/urfave/cli"
 )
 
-type KafkaFlags struct {
-	Brokers  []string
-	Topic    []string
-	Group    string
-	User     string
-	Password string
-}
-
 func KafkaShell(c *cli.Context) (err error) {
 
-	config := KafkaFlags{}
-	config.Brokers = strings.Split(kflags.Brokers, ",")
-	config.Topic = strings.Split(kflags.Topic, ",")
-	config.User = kflags.User
-	config.Group = kflags.Group
-	config.Password = kflags.Pswd
+	config := &KlientConfig.Kafka
+	if len(kflags.Brokers) > 0 {
+		config.Brokers = strings.Split(kflags.Brokers, ",")
+		config.Topics = strings.Split(kflags.Topic, ",")
+		config.User = kflags.User
+		config.Group = kflags.Group
+		config.Pswd = kflags.Pswd
+	}
+	fmt.Println(config)
 
 	sub := c.Args().First()
 	switch sub {
 	case "status":
-		kafkaShellStatus(c, &config)
+		kafkaShellStatus(c, config)
 	case "consume":
-		kafkaShellConsume(c, &config)
+		kafkaShellConsume(c, config)
 	case "produce":
-		kafkaShellProduce(c, &config)
+		kafkaShellProduce(c, config)
 	}
 
 	/*
@@ -50,23 +45,25 @@ func KafkaShell(c *cli.Context) (err error) {
 
 }
 
-func kafkaShellStatus(c *cli.Context, kf *KafkaFlags) error {
-	consumerConfig := sarama.NewConfig()
-	consumerConfig.Net.SASL.Enable = true
-	consumerConfig.Net.SASL.User = kflags.User
-	consumerConfig.Net.SASL.Password = kflags.Pswd
+func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
+	fmt.Println(kf)
 
+	consumerConfig := sarama.NewConfig()
+	if len(kf.User) > 1 {
+		consumerConfig.Net.SASL.Enable = true
+		consumerConfig.Net.SASL.User = kf.User
+		consumerConfig.Net.SASL.Password = kf.Pswd
+	}
 	client, err := sarama.NewClient(kf.Brokers, consumerConfig)
 	if err != nil {
 		fmt.Println("Unable to create kafka client err:  " + err.Error())
 		return err
 	}
 	// Status Offset
-	if len(kf.Topic) > 0 {
-
-		partitions, err := client.Partitions(kf.Topic[0])
+	if len(kf.Topics) > 0 {
+		partitions, err := client.Partitions(kf.Topics[0])
 		if err != nil {
-			fmt.Println("Unable to fetch partition IDs for the topic", err, client, kf.Topic)
+			fmt.Println("Unable to fetch partition IDs for the topic", err, client, kf.Topics)
 			return err
 		}
 		ofmg, err := sarama.NewOffsetManagerFromClient(kf.Group, client)
@@ -75,7 +72,7 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaFlags) error {
 		}
 
 		for _, p := range partitions {
-			pom, err := ofmg.ManagePartition(kf.Topic[0], p)
+			pom, err := ofmg.ManagePartition(kf.Topics[0], p)
 			if err != nil {
 				panic(err)
 			}
@@ -86,7 +83,7 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaFlags) error {
 					panic(err)
 				}
 			*/
-			fmt.Printf("Topic[%s] Partition[%.2d] Offset : %d, %s \n", kf.Topic, p, offset, offstr)
+			fmt.Printf("Topic[%s] Partition[%.2d] Offset : %d, %s \n", kf.Topics, p, offset, offstr)
 		}
 	} else {
 		/*
@@ -115,15 +112,18 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaFlags) error {
 
 }
 
-func kafkaShellConsume(c *cli.Context, kf *KafkaFlags) error {
+func kafkaShellConsume(c *cli.Context, kf *KafkaConfigSection) error {
+
 	config := cluster.NewConfig()
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
-	config.Net.SASL.Enable = true
-	config.Net.SASL.User = kf.User
-	config.Net.SASL.Password = kf.Password
+	if len(kf.User) > 0 {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = kf.User
+		config.Net.SASL.Password = kf.Pswd
+	}
 
-	consumer, err := cluster.NewConsumer(kf.Brokers, kf.Group, kf.Topic, config)
+	consumer, err := cluster.NewConsumer(kf.Brokers, kf.Group, kf.Topics, config)
 	if err != nil {
 		panic(err)
 	}
@@ -149,16 +149,16 @@ func kafkaShellConsume(c *cli.Context, kf *KafkaFlags) error {
 		}
 	}()
 
-	time.Sleep(100 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	return nil
 }
 
-func kafkaShellProduce(c *cli.Context, kf *KafkaFlags) error {
+func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) error {
 	config := sarama.NewConfig()
 	config.Net.SASL.Enable = true
-	config.Net.SASL.User = kflags.User
-	config.Net.SASL.Password = kflags.Pswd
+	config.Net.SASL.User = kf.User
+	config.Net.SASL.Password = kf.Pswd
 
 	producer, err := sarama.NewAsyncProducer(kf.Brokers, config)
 	if err != nil {
@@ -170,7 +170,7 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaFlags) error {
 	fmt.Println("msg:", msg)
 
 	producer.Input() <- &sarama.ProducerMessage{
-		Topic: kf.Topic[0],
+		Topic: kf.Topics[0],
 		Value: sarama.StringEncoder(msg),
 	}
 

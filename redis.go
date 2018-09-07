@@ -10,11 +10,16 @@ import (
 
 func RedisShell(c *cli.Context) error {
 	fmt.Println(kflags)
-
-	if len(kflags.Host) < 0 || len(kflags.Port) < 0 {
-		fmt.Errorf("redis host err \n")
+	config := &KlientConfig.Redis
+	if len(kflags.Host) > 0 {
+		config.Host = kflags.Host
+		config.Port = kflags.Port
+		config.User = kflags.User
+		config.Pswd = kflags.Pswd
+		config.Db = kflags.Db
 	}
-	addr := fmt.Sprintf("%s:%s", kflags.Host, kflags.Port)
+
+	addr := fmt.Sprintf("%s:%s", config.Host, config.Port)
 	con, err := redis.Dial("tcp", addr)
 	if err != nil {
 		panic(err)

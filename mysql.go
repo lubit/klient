@@ -9,12 +9,21 @@ import (
 )
 
 func MysqlShell(c *cli.Context) error {
+
 	fmt.Println(kflags)
 	if len(kflags.Shell) < 0 {
 		fmt.Println("mysql sql is nil")
 	}
+	config := &KlientConfig.Mysql
+	if len(kflags.Host) > 0 {
+		config.Host = kflags.Host
+		config.Port = kflags.Port
+		config.User = kflags.User
+		config.Pswd = kflags.Pswd
+		config.Db = kflags.Db
+	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", kflags.User, kflags.Pswd, kflags.Host, kflags.Port, kflags.Db)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.User, config.Pswd, config.Host, config.Port, config.Db)
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -24,10 +25,13 @@ var kflags Kflags
 
 func main() {
 
+	LoadConfig()
+	defer SaveConfig()
+
 	app := cli.NewApp()
 	app.Author = "罗发宣"
 	app.Version = "0.0.1"
-	flags := []cli.Flag{
+	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "host, H",
 			Destination: &kflags.Host,
@@ -65,10 +69,7 @@ func main() {
 			Destination: &kflags.Shell,
 		},
 	}
-	app.Flags = flags
 
-	// Default Command: Kafka
-	app.Action = KafkaShell
 	app.Commands = []cli.Command{
 		{
 			Name:   "kafka",
@@ -77,23 +78,25 @@ func main() {
 		},
 		{
 			Name:   "redis",
-			Flags:  flags,
+			Flags:  app.Flags,
 			Action: RedisShell,
 		},
 		{
 			Name:   "mysql",
-			Flags:  flags,
+			Flags:  app.Flags,
 			Action: MysqlShell,
 		},
 		{
 			Name:   "clickhouse",
-			Flags:  flags,
+			Flags:  app.Flags,
 			Action: ClickhouseShell,
 		},
 	}
 
 	sort.Sort(cli.FlagsByName(app.Flags))
 	sort.Sort(cli.CommandsByName(app.Commands))
+
+	fmt.Println(kflags)
 
 	err := app.Run(os.Args)
 	if err != nil {

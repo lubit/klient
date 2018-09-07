@@ -10,12 +10,21 @@ import (
 
 func ClickhouseShell(c *cli.Context) error {
 	fmt.Println(kflags)
+	config := &KlientConfig.Clickhouse
+	if len(kflags.Host) > 0 {
+		config.Host = kflags.Host
+		config.Port = kflags.Port
+		config.User = kflags.User
+		config.Pswd = kflags.Pswd
+		config.Db = kflags.Db
+	}
+	fmt.Println(config)
 	dsn := fmt.Sprintf("tcp://%s:%s?username=%s&password=%s&database=%s",
-		kflags.Host,
-		kflags.Port,
-		kflags.User,
-		kflags.Pswd,
-		kflags.Db)
+		config.Host,
+		config.Port,
+		config.User,
+		config.Pswd,
+		config.Db)
 	con, err := sql.Open("clickhouse", dsn)
 	if err != nil {
 		panic(err)
