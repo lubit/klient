@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -11,9 +10,11 @@ import (
 
 var KlientToml string = ".klient.toml"
 var KlientConfig Config
+var KafkaDefaultGroup = "test-consumer-group"
 
 type Config struct {
 	Mysql      CommonConfigSection `toml:"mysql"`
+	Pgsql      CommonConfigSection `toml:"pgsql"`
 	Redis      CommonConfigSection `toml:"redis"`
 	Clickhouse CommonConfigSection `toml:"clickhouse"`
 	Kafka      KafkaConfigSection  `toml:"kafka"`
@@ -43,22 +44,27 @@ func LoadConfig() {
 	defer f.Close()
 	_, err := toml.DecodeReader(f, &KlientConfig)
 	if err != nil {
-		panic(err)
+		panic(k_red(err))
 	} else {
-		fmt.Printf("%s: %+v \n", KlientToml, KlientConfig)
+		//DEBUG.Printf("%s: %+v \n", dst, KlientConfig)
 	}
 	return
 }
 
 func SaveConfig() error {
-
-	f, err := os.OpenFile(KlientToml, os.O_RDWR|os.O_CREATE, os.ModePerm|os.ModeTemporary)
+	user, _ := user.Current()
+	dst := filepath.Join(user.HomeDir, KlientToml)
+	f, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, os.ModePerm|os.ModeTemporary)
 	if err != nil {
-		panic(err)
+		panic(k_red(err))
+
 	}
+	defer f.Close()
+
+	//fmt.Println(KlientConfig)
 
 	if err = toml.NewEncoder(f).Encode(KlientConfig); err != nil {
-		panic(err)
+		panic(k_red(err))
 	}
 
 	return err

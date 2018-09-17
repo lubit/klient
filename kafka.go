@@ -1,12 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
@@ -23,7 +22,10 @@ func KafkaShell(c *cli.Context) (err error) {
 		config.Group = kflags.Group
 		config.Pswd = kflags.Pswd
 	}
-	fmt.Println(config)
+
+	if len(config.Group) <= 0 {
+		config.Group = KafkaDefaultGroup
+	}
 
 	sub := c.Args().First()
 	switch sub {
@@ -35,19 +37,11 @@ func KafkaShell(c *cli.Context) (err error) {
 		kafkaShellProduce(c, config)
 	}
 
-	/*
-		config.consumer, err = sarama.NewConsumerFromClient(config.client)
-		if err != nil {
-			fmt.Println("Unable to create new kafka consumer err:", err, config.client)
-			return
-		}
-	*/
 	return
 
 }
 
 func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
-	fmt.Println(kf)
 
 	// trap SIGINT to trigger a shutdown.
 	signals := make(chan os.Signal, 1)
@@ -61,7 +55,7 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
 	}
 	client, err := sarama.NewClient(kf.Brokers, consumerConfig)
 	if err != nil {
-		fmt.Println("Unable to create kafka client err:  " + err.Error())
+		fmt.Println("Unable to create kafka client err:  " + k_red(err.Error()))
 		return err
 	}
 	// Status Offset
@@ -71,9 +65,10 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
 
 	partitions, err := client.Partitions(kf.Topics[0])
 	if err != nil {
-		fmt.Println("Unable to fetch partition IDs for the topic", err, client, kf.Topics)
+		fmt.Println("Unable to fetch partition IDs for the topic", k_red(err), k_yellow(client), k_green(kf.Topics))
 		return err
 	}
+
 	ofmg, err := sarama.NewOffsetManagerFromClient(kf.Group, client)
 	if err != nil {
 		panic(err)
@@ -91,7 +86,7 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
 				panic(err)
 			}
 		*/
-		fmt.Printf("Topic[%s] Partition[%.2d] Offset : %d, %s \n", kf.Topics, p, offset, offstr)
+		fmt.Printf("Topic[%s] Partition[%2s] Offset[%s] : %s \n", k_yellow(kf.Topics), k_cyan(p), k_green(offset), k_blue(offstr))
 	}
 	return nil
 
@@ -107,6 +102,9 @@ func kafkaShellConsume(c *cli.Context, kf *KafkaConfigSection) error {
 		config.Net.SASL.User = kf.User
 		config.Net.SASL.Password = kf.Pswd
 	}
+	if kflags.FromBeginning {
+		config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	}
 
 	consumer, err := cluster.NewConsumer(kf.Brokers, kf.Group, kf.Topics, config)
 	if err != nil {
@@ -118,18 +116,6 @@ func kafkaShellConsume(c *cli.Context, kf *KafkaConfigSection) error {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
-	// consume errors
-	go func() {
-		for err := range consumer.Errors() {
-			fmt.Printf("Error: %s\n", err.Error())
-		}
-	}()
-	// consume notifications
-	go func() {
-		for ntf := range consumer.Notifications() {
-			fmt.Printf("Rebalanced: %+v\n", ntf)
-		}
-	}()
 	// consume msg
 	// consume messages, watch signals
 	for {
@@ -139,12 +125,12 @@ func kafkaShellConsume(c *cli.Context, kf *KafkaConfigSection) error {
 				fmt.Println("kafka no more msg")
 				return nil
 			}
-			fmt.Fprintf(os.Stdout, "%s/%d/%d\t%s\t%s\n", msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
+			fmt.Printf("topic[%s] parition[%2s] offset[%s]: \tkey:%s\t value: %s \n", k_green(msg.Topic), k_green(msg.Partition), k_green(msg.Offset), k_cyan(string(msg.Key)), k_cyan(string(msg.Value)))
 			consumer.MarkOffset(msg, "") // mark message as processed
 		case err := <-consumer.Errors():
-			fmt.Printf("Error: %s\n", err.Error())
+			fmt.Printf("Error: %s\n", k_red(err.Error()))
 		case ntf := <-consumer.Notifications():
-			fmt.Printf("Rebalanced: %+v\n", ntf)
+			fmt.Printf("Rebalanced: %+v\n", k_yellow(ntf))
 		case <-signals:
 			return nil
 		}
@@ -153,11 +139,13 @@ func kafkaShellConsume(c *cli.Context, kf *KafkaConfigSection) error {
 	return nil
 }
 
-func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) error {
+func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 	config := sarama.NewConfig()
-	config.Net.SASL.Enable = true
-	config.Net.SASL.User = kf.User
-	config.Net.SASL.Password = kf.Pswd
+	if len(kf.User) > 0 {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = kf.User
+		config.Net.SASL.Password = kf.Pswd
+	}
 
 	producer, err := sarama.NewAsyncProducer(kf.Brokers, config)
 	if err != nil {
@@ -165,21 +153,31 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) error {
 	}
 	defer producer.Close()
 
-	msg := c.Args().Get(1)
-	fmt.Println("msg:", msg)
-
-	producer.Input() <- &sarama.ProducerMessage{
-		Topic: kf.Topics[0],
-		Value: sarama.StringEncoder(msg),
-	}
-
+	// input from terminal
+	in_ch := make(chan string, 10)
+	in_ch <- c.Args().Get(1)
 	go func() {
-		for err := range producer.Errors() {
-			log.Printf("Error: %s\n", err.Error())
+		in_reader := bufio.NewReader(os.Stdin)
+		for {
+			msg, err := in_reader.ReadString('\n')
+			if err != nil {
+				panic(k_red(err))
+			}
+			in_ch <- msg
 		}
 	}()
 
-	time.Sleep(1 * time.Second)
+	for {
+		select {
+		case msg := <-in_ch:
+			producer.Input() <- &sarama.ProducerMessage{
+				Topic: kf.Topics[0],
+				Value: sarama.StringEncoder(msg),
+			}
 
-	return nil
+		case err := <-producer.Errors():
+			fmt.Println(k_red(err))
+
+		}
+	}
 }

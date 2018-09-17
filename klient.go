@@ -1,30 +1,47 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"os/signal"
-	"sort"
 
+	"github.com/fatih/color"
 	"github.com/urfave/cli"
 )
 
 type Kflags struct {
-	Host    string
-	Port    string
-	User    string
-	Pswd    string
-	Db      string
-	Shell   string
-	Brokers string
-	Topic   string
-	Group   string
+	Host          string
+	Port          string
+	User          string
+	Pswd          string
+	Db            string
+	Shell         string
+	Brokers       string
+	Topic         string
+	Group         string
+	FromBeginning bool
 }
 
-var kflags Kflags
+var (
+	kflags Kflags
+	// error
+	k_red func(a ...interface{}) string
+	// warn
+	k_yellow func(a ...interface{}) string
+	// success
+	k_green func(a ...interface{}) string
+	// key
+	k_cyan func(a ...interface{}) string
+	// value
+	k_blue func(a ...interface{}) string
+)
 
 func main() {
+
+	k_yellow = color.New(color.FgYellow).SprintFunc()
+	k_red = color.New(color.FgRed).SprintFunc()
+	k_cyan = color.New(color.FgCyan).SprintFunc()
+	k_blue = color.New(color.FgBlue).SprintFunc()
+	k_green = color.New(color.FgGreen).SprintFunc()
 
 	LoadConfig()
 	defer SaveConfig()
@@ -69,6 +86,10 @@ func main() {
 			Name:        "shell, e",
 			Destination: &kflags.Shell,
 		},
+		cli.BoolFlag{
+			Name:        "from-beginning",
+			Destination: &kflags.FromBeginning,
+		},
 	}
 
 	app.Commands = []cli.Command{
@@ -88,23 +109,23 @@ func main() {
 			Action: MysqlShell,
 		},
 		{
+			Name:   "pgsql",
+			Flags:  app.Flags,
+			Action: PgsqlShell,
+		},
+		{
 			Name:   "clickhouse",
 			Flags:  app.Flags,
 			Action: ClickhouseShell,
 		},
 	}
 
-	sort.Sort(cli.FlagsByName(app.Flags))
-	sort.Sort(cli.CommandsByName(app.Commands))
-
-	fmt.Println(kflags)
+	//sort.Sort(cli.FlagsByName(app.Flags))
+	//sort.Sort(cli.CommandsByName(app.Commands))
 
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// trap SIGINT to trigger a shutdown.
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
 
 }
