@@ -1,6 +1,7 @@
 # Klient ：       
 ## Features
 
+
 Klient can be used as a terminal client with colorful output for several databases .   
 
 1. Colorful output
@@ -27,7 +28,7 @@ Klient can be used as a terminal client with colorful output for several databas
 
 ## Usage
 
-    $ klient [driver] [comman] [FORMULA...]
+    $ klient [driver] [commands] [FORMULA...]
 
 ### Exmaple 
 
@@ -57,3 +58,4 @@ Ommit [FORMULA...] parameters which were stored in  $USER_HOMEDIR/.klient.toml
 
 ## Authors
 * [@罗发宣](https://weibo.com/u/6028984452)
+
