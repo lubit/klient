@@ -79,14 +79,14 @@ func kafkaShellStatus(c *cli.Context, kf *KafkaConfigSection) error {
 		if err != nil {
 			panic(err)
 		}
-		offset, offstr := pom.NextOffset()
-		/*
-			offset, err := config.client.GetOffset(config.Topic, p, sarama.OffsetNewest)
-			if err != nil {
-				panic(err)
-			}
-		*/
-		fmt.Printf("Topic[%s] Partition[%2s] Offset[%s] : %s \n", k_yellow(kf.Topics), k_cyan(p), k_green(offset), k_blue(offstr))
+		offset, _ := pom.NextOffset()
+
+		partOff, err := client.GetOffset(kf.Topics[0], p, sarama.OffsetNewest)
+		if err != nil {
+			panic(err)
+		}
+		lag := partOff - offset
+		fmt.Printf("Topic[%s] Partition[%2s] Offset[%s] : lag %s \n", k_yellow(kf.Topics), k_cyan(p), k_green(offset), k_cyan(lag))
 	}
 	return nil
 

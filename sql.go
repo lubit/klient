@@ -12,7 +12,6 @@ import (
 
 func MysqlShell(c *cli.Context) error {
 
-	fmt.Println(kflags)
 	if len(kflags.Shell) < 0 {
 		fmt.Println("mysql sql is nil")
 	}
