@@ -5,7 +5,7 @@
 Klient can be used as a terminal client with colorful output for several databases .   
 
 1. Colorful output
-2. Simple command: Resue [FORMULA...] which can be stored in $USER_HOMEDIR/.klient.toml
+2. Simple command - Resue [FORMULA...] which can be stored in $USER_HOMEDIR/.klient.toml
 3. More databases
     * kafka
     * mysql | pgsql
