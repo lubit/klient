@@ -146,6 +146,7 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 		config.Net.SASL.User = kf.User
 		config.Net.SASL.Password = kf.Pswd
 	}
+	config.Producer.Return.Successes = true
 
 	producer, err := sarama.NewAsyncProducer(kf.Brokers, config)
 	if err != nil {
@@ -177,7 +178,8 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 
 		case err := <-producer.Errors():
 			fmt.Println(k_red(err))
-
+		case ss := <-producer.Successes():
+			fmt.Println(ss)
 		}
 	}
 }

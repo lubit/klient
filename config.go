@@ -1,7 +1,10 @@
 package main
 
 import (
-	"os"
+	"bytes"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"os/user"
 	"path/filepath"
 
@@ -39,33 +42,53 @@ type KafkaConfigSection struct {
 func LoadConfig() {
 	user, _ := user.Current()
 	dst := filepath.Join(user.HomeDir, KlientToml)
-
-	f, _ := os.OpenFile(dst, os.O_CREATE|os.O_RDONLY, os.ModePerm|os.ModeTemporary)
-	defer f.Close()
-	_, err := toml.DecodeReader(f, &KlientConfig)
-	if err != nil {
+	/*
+		f, _ := os.OpenFile(dst, os.O_CREATE|os.O_RDONLY, os.ModePerm|os.ModeTemporary)
+		defer f.Close()
+		_, err := toml.DecodeReader(f, &KlientConfig)
+		if err != nil {
+			panic(k_red(err))
+		} else {
+			//DEBUG.Printf("%s: %+v \n", dst, KlientConfig)
+		}
+	*/
+	if _, err := toml.DecodeFile(dst, &KlientConfig); err != nil {
 		panic(k_red(err))
-	} else {
-		//DEBUG.Printf("%s: %+v \n", dst, KlientConfig)
 	}
 	return
 }
 
 func SaveConfig() error {
+
+	buf := new(bytes.Buffer)
+	err := toml.NewEncoder(buf).Encode(KlientConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(buf.String())
+
 	user, _ := user.Current()
 	dst := filepath.Join(user.HomeDir, KlientToml)
-	f, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, os.ModePerm|os.ModeTemporary)
+
+	err = ioutil.WriteFile(dst, buf.Bytes(), 0644)
 	if err != nil {
 		panic(k_red(err))
-
 	}
-	defer f.Close()
 
-	//fmt.Println(KlientConfig)
+	/*
+		f, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, os.ModePerm|os.ModeTemporary)
+		if err != nil {
+			panic(k_red(err))
 
-	if err = toml.NewEncoder(f).Encode(KlientConfig); err != nil {
-		panic(k_red(err))
-	}
+		}
+		defer f.Close()
+
+		fmt.Println(KlientConfig)
+
+		if err = toml.NewEncoder(f).Encode(KlientConfig); err != nil {
+			panic(k_red(err))
+		}
+	*/
 
 	return err
 }
