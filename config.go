@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os/user"
@@ -65,7 +64,7 @@ func SaveConfig() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(buf.String())
+	//fmt.Println(buf.String())
 
 	user, _ := user.Current()
 	dst := filepath.Join(user.HomeDir, KlientToml)

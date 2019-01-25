@@ -1,4 +1,4 @@
-module lubit.cn/klient
+module github.com/lubit/klient
 
 require (
 	github.com/BurntSushi/toml v0.3.1
