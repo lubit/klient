@@ -96,11 +96,12 @@ func ClickhouseShell(c *cli.Context) error {
 		config.User,
 		config.Pswd,
 		config.Db)
+
 	con, err := sql.Open("clickhouse", dsn)
 	if err != nil {
 		panic(k_red(err))
 	} else if err = con.Ping(); err != nil {
-		panic(k_red(err))
+		panic(k_red(err.Error()))
 	}
 
 	rows, err := con.Query(kflags.Shell)

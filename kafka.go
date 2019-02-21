@@ -147,6 +147,7 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 		config.Net.SASL.Password = kf.Pswd
 	}
 	config.Producer.Return.Successes = true
+	config.Producer.Flush.Messages = 10
 
 	producer, err := sarama.NewAsyncProducer(kf.Brokers, config)
 	if err != nil {
@@ -171,6 +172,7 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 	for {
 		select {
 		case msg := <-in_ch:
+
 			producer.Input() <- &sarama.ProducerMessage{
 				Topic: kf.Topics[0],
 				Value: sarama.StringEncoder(msg),
@@ -182,4 +184,5 @@ func kafkaShellProduce(c *cli.Context, kf *KafkaConfigSection) {
 			fmt.Println(ss)
 		}
 	}
+
 }

@@ -37,7 +37,7 @@ Klient can be used as a terminal client with colorful output for several databas
     $ klient kafka produce -B 'localhost:9092' -T test
 ![kafka-produce](./docs/img/kafka-produce.png)
 
-    $ klient kafka consume  -B 'localhost:9092' -T test  -G test-consumer-group
+    $ klient kafka consume  -B 'localhost:9092' -T test  -G test-consumer-group -u root -p 12345
 ![kafka-consume](./docs/img/kafka-consume.png)
 
 ### TIPS 

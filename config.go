@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/user"
 	"path/filepath"
 
@@ -42,19 +43,16 @@ type KafkaConfigSection struct {
 func LoadConfig() {
 	user, _ := user.Current()
 	dst := filepath.Join(user.HomeDir, KlientToml)
-	/*
-		f, _ := os.OpenFile(dst, os.O_CREATE|os.O_RDONLY, os.ModePerm|os.ModeTemporary)
-		defer f.Close()
-		_, err := toml.DecodeReader(f, &KlientConfig)
-		if err != nil {
-			panic(k_red(err))
-		} else {
-			//DEBUG.Printf("%s: %+v \n", dst, KlientConfig)
-		}
-	*/
-	if _, err := toml.DecodeFile(dst, &KlientConfig); err != nil {
+
+	f, _ := os.OpenFile(dst, os.O_CREATE|os.O_RDONLY, os.ModePerm|os.ModeTemporary)
+	defer f.Close()
+	_, err := toml.DecodeReader(f, &KlientConfig)
+	if err != nil {
 		panic(k_red(err))
+	} else {
+		//DEBUG.Printf("%s: %+v \n", dst, KlientConfig)
 	}
+
 	return
 }
 
